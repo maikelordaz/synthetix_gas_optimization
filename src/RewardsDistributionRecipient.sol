@@ -1,11 +1,10 @@
-// SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
 // Inheritance
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "./original/Owned.sol";
 
 // https://docs.synthetix.io/contracts/source/contracts/rewardsdistributionrecipient
-abstract contract RewardsDistributionRecipient is Ownable {
+abstract contract RewardsDistributionRecipient is Owned {
     address public rewardsDistribution;
 
     function notifyRewardAmount(uint256 reward) external virtual;

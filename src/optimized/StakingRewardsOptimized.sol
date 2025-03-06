@@ -3,37 +3,40 @@ pragma solidity 0.8.28;
 
 import "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuardTransient.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-
-// Inheritance
-import "./interfaces/IStakingRewards.sol";
-import "./RewardsDistributionRecipient.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 // https://docs.synthetix.io/contracts/source/contracts/stakingrewards
 contract StakingRewardsOptimized is
-    IStakingRewards,
-    RewardsDistributionRecipient,
-    ReentrancyGuard,
+    Ownable,
+    ReentrancyGuardTransient,
     Pausable
 {
     using SafeERC20 for IERC20;
 
     /* ========== STATE VARIABLES ========== */
 
-    IERC20 public rewardsToken;
-    IERC20 public stakingToken;
-    uint256 public periodFinish = 0;
-    uint256 public rewardRate = 0;
+    IERC20 public immutable rewardsToken;
+    IERC20 public immutable stakingToken;
+    uint256 public periodFinish;
+    uint256 public rewardRate;
     uint256 public rewardsDuration = 7 days;
     uint256 public lastUpdateTime;
     uint256 public rewardPerTokenStored;
+    address public rewardsDistribution;
 
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
-    uint256 private _totalSupply;
+    uint256 public totalSupply;
     mapping(address => uint256) private _balances;
+
+    error StakingRewards__INVALID_ZERO_AMOUNT();
+    error StakingRewards__RewardTooHigh();
+    error StakingRewards__UnnallowedWitdrwaw();
+    error StakingRewards__TimeNotMet();
+    error StakingRewards__NotRewardsDistribution();
 
     /* ========== CONSTRUCTOR ========== */
 
@@ -50,10 +53,6 @@ contract StakingRewardsOptimized is
 
     /* ========== VIEWS ========== */
 
-    function totalSupply() external view returns (uint256) {
-        return _totalSupply;
-    }
-
     function balanceOf(address account) external view returns (uint256) {
         return _balances[account];
     }
@@ -63,14 +62,14 @@ contract StakingRewardsOptimized is
     }
 
     function rewardPerToken() public view returns (uint256) {
-        if (_totalSupply == 0) {
+        if (totalSupply == 0) {
             return rewardPerTokenStored;
         }
         return
             rewardPerTokenStored +
             (lastTimeRewardApplicable() -
                 (lastUpdateTime * rewardRate * 1e18) /
-                _totalSupply);
+                totalSupply);
     }
 
     function earned(address account) public view returns (uint256) {
@@ -91,21 +90,31 @@ contract StakingRewardsOptimized is
     function stake(
         uint256 amount
     ) external nonReentrant whenNotPaused updateReward(msg.sender) {
-        require(amount > 0, "Cannot stake 0");
-        _totalSupply = _totalSupply + amount;
+        require(amount > 0, StakingRewards__INVALID_ZERO_AMOUNT());
+        totalSupply = totalSupply + amount;
         _balances[msg.sender] = _balances[msg.sender] + amount;
         stakingToken.safeTransferFrom(msg.sender, address(this), amount);
-        emit Staked(msg.sender, amount);
+
+        assembly {
+            let _mptr := mload(0x40)
+            mstore(_mptr, amount)
+            log2(_mptr, 0x20, StakedSig, caller())
+        }
     }
 
     function withdraw(
         uint256 amount
     ) public nonReentrant updateReward(msg.sender) {
-        require(amount > 0, "Cannot withdraw 0");
-        _totalSupply = _totalSupply - amount;
+        require(amount > 0, StakingRewards__INVALID_ZERO_AMOUNT());
+        totalSupply = totalSupply - amount;
         _balances[msg.sender] = _balances[msg.sender] - amount;
         stakingToken.safeTransfer(msg.sender, amount);
-        emit Withdrawn(msg.sender, amount);
+
+        assembly {
+            let _mptr := mload(0x40)
+            mstore(_mptr, amount)
+            log2(_mptr, 0x20, WithdrawnSig, caller())
+        }
     }
 
     function getReward() public nonReentrant updateReward(msg.sender) {
@@ -113,7 +122,12 @@ contract StakingRewardsOptimized is
         if (reward > 0) {
             rewards[msg.sender] = 0;
             rewardsToken.safeTransfer(msg.sender, reward);
-            emit RewardPaid(msg.sender, reward);
+
+            assembly {
+                let _mptr := mload(0x40)
+                mstore(_mptr, reward)
+                log2(_mptr, 0x20, RewardPaidSig, caller())
+            }
         }
     }
 
@@ -126,7 +140,7 @@ contract StakingRewardsOptimized is
 
     function notifyRewardAmount(
         uint256 reward
-    ) external override onlyRewardsDistribution updateReward(address(0)) {
+    ) external onlyRewardsDistribution updateReward(address(0)) {
         if (block.timestamp >= periodFinish) {
             rewardRate = reward / rewardsDuration;
         } else {
@@ -142,12 +156,17 @@ contract StakingRewardsOptimized is
         uint balance = rewardsToken.balanceOf(address(this));
         require(
             rewardRate <= balance / rewardsDuration,
-            "Provided reward too high"
+            StakingRewards__RewardTooHigh()
         );
 
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + rewardsDuration;
-        emit RewardAdded(reward);
+
+        assembly {
+            let _mptr := mload(0x40)
+            mstore(_mptr, reward)
+            log1(_mptr, 0x20, RewardAddedSig)
+        }
     }
 
     // Added to support recovering LP Rewards from other systems such as BAL to be distributed to holders
@@ -157,19 +176,32 @@ contract StakingRewardsOptimized is
     ) external onlyOwner {
         require(
             tokenAddress != address(stakingToken),
-            "Cannot withdraw the staking token"
+            StakingRewards__UnnallowedWitdrwaw()
         );
         IERC20(tokenAddress).safeTransfer(owner(), tokenAmount);
-        emit Recovered(tokenAddress, tokenAmount);
+
+        assembly {
+            let _mptr := mload(0x40)
+            mstore(_mptr, tokenAmount)
+            log2(_mptr, 0x20, RecoveredSig, caller())
+        }
     }
 
     function setRewardsDuration(uint256 _rewardsDuration) external onlyOwner {
-        require(
-            block.timestamp > periodFinish,
-            "Previous rewards period must be complete before changing the duration for the new period"
-        );
+        require(block.timestamp > periodFinish, StakingRewards__TimeNotMet());
         rewardsDuration = _rewardsDuration;
-        emit RewardsDurationUpdated(rewardsDuration);
+
+        assembly {
+            let _mptr := mload(0x40)
+            mstore(_mptr, _rewardsDuration)
+            log1(_mptr, 0x20, RewardsDurationUpdatedSig)
+        }
+    }
+
+    function setRewardsDistribution(
+        address _rewardsDistribution
+    ) external onlyOwner {
+        rewardsDistribution = _rewardsDistribution;
     }
 
     /* ========== MODIFIERS ========== */
@@ -184,6 +216,14 @@ contract StakingRewardsOptimized is
         _;
     }
 
+    modifier onlyRewardsDistribution() {
+        require(
+            msg.sender == rewardsDistribution,
+            StakingRewards__NotRewardsDistribution()
+        );
+        _;
+    }
+
     /* ========== EVENTS ========== */
 
     event RewardAdded(uint256 reward);
@@ -192,4 +232,17 @@ contract StakingRewardsOptimized is
     event RewardPaid(address indexed user, uint256 reward);
     event RewardsDurationUpdated(uint256 newDuration);
     event Recovered(address token, uint256 amount);
+
+    uint256 private constant RewardAddedSig =
+        0xde88a922e0d3b88b24e9623efeb464919c6bf9f66857a65e2bfcf2ce87a9433d;
+    uint256 private constant StakedSig =
+        0x9e71bc8eea02a63969f509818f2dafb9254532904319f9dbda79b67bd34a5f3d;
+    uint256 private constant WithdrawnSig =
+        0x7084f5476618d8e60b11ef0d7d3f06914655adb8793e28ff7f018d4c76d505d5;
+    uint256 private constant RewardPaidSig =
+        0xe2403640ba68fed3a2f88b7557551d1993f84b99bb10ff833f0cf8db0c5e0486;
+    uint256 private constant RewardsDurationUpdatedSig =
+        0xfb46ca5a5e06d4540d6387b930a7c978bce0db5f449ec6b3f5d07c6e1d44f2d3;
+    uint256 private constant RecoveredSig =
+        0x8c1256b8896378cd5044f80c202f9772b9d77dc85c8a6eb51967210b09bfaa28;
 }

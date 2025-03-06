@@ -1,11 +1,11 @@
-pragma solidity ^0.5.16;
+pragma solidity 0.8.28;
 
 // https://docs.synthetix.io/contracts/source/contracts/owned
 contract Owned {
     address public owner;
     address public nominatedOwner;
 
-    constructor(address _owner) public {
+    constructor(address _owner) {
         require(_owner != address(0), "Owner address cannot be 0");
         owner = _owner;
         emit OwnerChanged(address(0), _owner);
