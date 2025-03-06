@@ -62,14 +62,15 @@ contract StakingRewardsOptimized is
     }
 
     function rewardPerToken() public view returns (uint256) {
-        if (totalSupply == 0) {
+        uint256 supply = totalSupply;
+        if (supply == 0) {
             return rewardPerTokenStored;
         }
         return
             rewardPerTokenStored +
             (lastTimeRewardApplicable() -
                 (lastUpdateTime * rewardRate * 1e18) /
-                totalSupply);
+                supply);
     }
 
     function earned(address account) public view returns (uint256) {
