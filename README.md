@@ -1,4 +1,4 @@
-Reverts instead of requires
+Reverts in yul instead of requires
 Immutables
 Unneded initializations
 storage access
