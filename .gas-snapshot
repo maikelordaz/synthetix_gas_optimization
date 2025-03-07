@@ -1,15 +1,32 @@
-GasTestOptimized:test_optimizedExit() (gas: 133628)
-GasTestOptimized:test_optimizedGetReward() (gas: 157500)
-GasTestOptimized:test_optimizedGetRewardForDuration() (gas: 13760)
-GasTestOptimized:test_optimizedLastTimeRewardApplicable() (gas: 11115)
-GasTestOptimized:test_optimizedRecoverERC20() (gas: 45161)
-GasTestOptimized:test_optimizedStake() (gas: 141011)
-GasTestOptimized:test_optimizedWithdraw() (gas: 168297)
+GasTestOriginal:testBalanceOf() (gas: 10670)
+GasTestOptimized:test_optimizedBalanceOf() (gas: 10646)
 
-GasTestOriginal:testExit() (gas: 143159)
-GasTestOriginal:testGetReward() (gas: 161014)
-GasTestOriginal:testGetRewardForDuration() (gas: 13759)
-GasTestOriginal:testLastTimeRewardApplicable() (gas: 11202)
-GasTestOriginal:testRecoverERC20() (gas: 46930)
-GasTestOriginal:testStake() (gas: 144820)
-GasTestOriginal:testWithdraw() (gas: 172127)
+GasTestOriginal:testEarned() (gas: 20067)
+GasTestOptimized:test_optimizedEarned() (gas: 20057)
+
+GasTestOriginal:testExit() (gas: 132223)
+GasTestOptimized:test_optimizedExit() (gas: 122736)
+
+GasTestOriginal:testGetReward() (gas: 156654)
+GasTestOptimized:test_optimizedGetReward() (gas: 153028)
+
+GasTestOriginal:testGetRewardForDuration() (gas: 10264)
+GasTestOptimized:test_optimizedGetRewardForDuration() (gas: 10265)
+
+GasTestOriginal:testLastTimeRewardApplicable() (gas: 8049)
+GasTestOptimized:test_optimizedLastTimeRewardApplicable() (gas: 8007)
+
+GasTestOriginal:testRecoverERC20() (gas: 44956)
+GasTestOptimized:test_optimizedRecoverERC20() (gas: 43253)
+
+GasTestOriginal:testRewardPerToken() (gas: 10070)
+GasTestOptimized:test_optimizedRewardPerToken() (gas: 10038)
+
+GasTestOriginal:testStake() (gas: 140393)
+GasTestOptimized:test_optimizedStake() (gas: 136670)
+
+GasTestOriginal:testTotalSupply() (gas: 7915)
+GasTestOptimized:test_optimizedTotalSupply() (gas: 7888)
+
+GasTestOriginal:testWithdraw() (gas: 158350)
+GasTestOptimized:test_optimizedWithdraw() (gas: 154619)
