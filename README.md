@@ -5,10 +5,6 @@
 - **Contract:** StakingRewards.sol
 - **Optimized Contract:** StakingRewardsOptimized.sol
 - **Audit Objective:** Reduce gas costs
-- **Findings Summary:**
-  - **Deployment Gas Reduced:** 2,160,624 -> 1,546,600 (↓ 28.4%)
-  - **Deployment Size Reduced:** 10,073 -> 7,340 (↓ 27.2%)
-  - **Gas Savings on Function Calls:** Significant reductions across multiple functions
 
 ## Optimizations & Gas Savings
 
